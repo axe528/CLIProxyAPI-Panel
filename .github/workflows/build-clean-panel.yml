@@ -1,4 +1,4 @@
-name: Build Clean Management Panel
+name: Build Clean Management Panel (Locked v1.22.12)
 
 on:
   workflow_dispatch:
@@ -14,7 +14,8 @@ concurrency:
 
 env:
   UPSTREAM_REPOSITORY: router-for-me/Cli-Proxy-API-Management-Center
-  CLEAN_BUILD_REVISION: '1'
+  UPSTREAM_LOCKED_TAG: v1.22.12
+  CLEAN_BUILD_REVISION: '2'
 
 jobs:
   build:
@@ -31,11 +32,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          upstream_tag="$(gh api "repos/${UPSTREAM_REPOSITORY}/releases/latest" --jq .tag_name)"
+          
+          # 锁定到 v1.22.12，不再追踪 latest
+          upstream_tag="${UPSTREAM_LOCKED_TAG}"
           release_tag="clean-${upstream_tag}-r${CLEAN_BUILD_REVISION}"
+          
           echo "upstream_tag=${upstream_tag}" >> "${GITHUB_OUTPUT}"
           echo "release_tag=${release_tag}" >> "${GITHUB_OUTPUT}"
-
+          
           if gh release view "${release_tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             echo "exists=true" >> "${GITHUB_OUTPUT}"
           else
@@ -47,7 +51,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ env.UPSTREAM_REPOSITORY }}
-          ref: ${{ steps.version.outputs.upstream_tag }}
+          ref: ${{ env.UPSTREAM_LOCKED_TAG }}
           path: upstream
 
       - name: Set up Bun
@@ -90,11 +94,13 @@ jobs:
               "const NAV_TOOLTIP_VIEWPORT_MARGIN = 8;",
               "const NAV_TOOLTIP_VIEWPORT_MARGIN = 8;\nconst SHOW_SPONSORED_PROVIDERS = false;",
           )
+
           replace_once(
               "src/components/layout/MainLayout.tsx",
               "...(!isApiKeyFunConfigured ? [quickStartNavItem] : []),",
               "...(SHOW_SPONSORED_PROVIDERS && !isApiKeyFunConfigured ? [quickStartNavItem] : []),",
           )
+
           replace_once(
               "src/components/layout/MainLayout.tsx",
               "...(isApiKeyFunConfigured ? [quickStartNavItem] : []),",
@@ -106,12 +112,13 @@ jobs:
               "  getSponsorProviderDefinition,\n  isTemporarilyHiddenSponsorBrand,",
               "  getSponsorProviderDefinition,\n  isMultiProtocolSponsorBrand,\n  isTemporarilyHiddenSponsorBrand,",
           )
+
           replace_once(
               "src/features/providers/useProviderWorkbench.ts",
               '''          !REMOVED_QUICK_ACCESS_BRANDS.has(group.id) && !isTemporarilyHiddenSponsorBrand(group.id)''',
               '''          !REMOVED_QUICK_ACCESS_BRANDS.has(group.id) &&
-                    !isMultiProtocolSponsorBrand(group.id) &&
-                    !isTemporarilyHiddenSponsorBrand(group.id)''',
+            !isMultiProtocolSponsorBrand(group.id) &&
+            !isTemporarilyHiddenSponsorBrand(group.id)''',
           )
 
           sponsor_path = root / "src/features/config/sponsors.ts"
@@ -159,7 +166,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add management.html .upstream-version
           if ! git diff --cached --quiet; then
-            git commit -m 'build: clean panel from ${{ steps.version.outputs.upstream_tag }}'
+            git commit -m 'build: clean panel from ${{ steps.version.outputs.upstream_tag }} (locked)'
             git push
           fi
 
@@ -174,5 +181,5 @@ jobs:
           gh release create "${RELEASE_TAG}" management.html \
             --repo "${GITHUB_REPOSITORY}" \
             --target main \
-            --title "Clean panel ${UPSTREAM_TAG}" \
-            --notes "Built from official ${UPSTREAM_REPOSITORY} ${UPSTREAM_TAG}. Sponsored provider shortcuts and advertising links are hidden; core management and plugin features are unchanged."
+            --title "Clean panel ${UPSTREAM_TAG} (locked)" \
+            --notes "Built from official ${UPSTREAM_REPOSITORY} ${UPSTREAM_TAG}. Sponsored provider shortcuts and advertising links removed. **Version locked to v1.22.12 to preserve claudeApi/code0 brand support.**"
