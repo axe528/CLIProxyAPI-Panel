@@ -107,20 +107,6 @@ jobs:
               "...(SHOW_SPONSORED_PROVIDERS && isApiKeyFunConfigured ? [quickStartNavItem] : []),",
           )
 
-          replace_once(
-              "src/features/providers/useProviderWorkbench.ts",
-              "  getSponsorProviderDefinition,\n  isTemporarilyHiddenSponsorBrand,",
-              "  getSponsorProviderDefinition,\n  isMultiProtocolSponsorBrand,\n  isTemporarilyHiddenSponsorBrand,",
-          )
-
-          replace_once(
-              "src/features/providers/useProviderWorkbench.ts",
-              '''          !REMOVED_QUICK_ACCESS_BRANDS.has(group.id) && !isTemporarilyHiddenSponsorBrand(group.id)''',
-              '''          !REMOVED_QUICK_ACCESS_BRANDS.has(group.id) &&
-            !isMultiProtocolSponsorBrand(group.id) &&
-            !isTemporarilyHiddenSponsorBrand(group.id)''',
-          )
-
           sponsor_path = root / "src/features/config/sponsors.ts"
           sponsor_text = sponsor_path.read_text(encoding="utf-8")
           sponsor_pattern = re.compile(
